@@ -42,17 +42,6 @@ export const DEFAULT_MODEL_ID = 'mistralai/mistral-large-2512'
 
 export const AVAILABLE_MODELS: ModelConfig[] = [
   {
-    id: 'anthropic/claude-sonnet-4-6',
-    name: 'Claude Sonnet 4',
-    provider: 'Anthropic',
-    description: 'Qualité maximale (coût premium)',
-    badge: 'Premium',
-    color: '#CC785C',
-    maxTokens: 8192,
-    temperature: 0.3,
-    buildSystemPrompt: buildClaudeSystemPrompt,   // STRICTEMENT INCHANGÉ
-  },
-  {
     id: 'mistralai/mistral-large-2512',
     name: 'Mistral Large 3',
     provider: 'Mistral AI',

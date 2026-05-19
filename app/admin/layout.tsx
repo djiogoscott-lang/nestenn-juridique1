@@ -1,10 +1,9 @@
 import { requireRole } from '@/lib/auth'
 import Link from 'next/link'
-import { Scale, BarChart2, Building2, Users, BookOpen, LayoutDashboard } from 'lucide-react'
+import { Scale, BarChart2, Building2, Users, BookOpen } from 'lucide-react'
 
 const nav = [
   { title: 'Chat', url: '/chat', icon: Scale },
-  { title: 'Dashboard Feedback', url: '/admin/dashboard', icon: LayoutDashboard },
   { title: 'Analytics', url: '/analytics', icon: BarChart2 },
   { title: 'Base de connaissances', url: '/admin/seed', icon: BookOpen },
   { title: 'Agences', url: '/admin/agencies', icon: Building2 },

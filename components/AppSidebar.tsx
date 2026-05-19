@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Scale, ChevronLeft, User, BarChart2, Users, Building2,
-  LogOut, Plus, MessageSquare, BookOpen, AlertCircle, RefreshCw, Calculator, Settings, LayoutDashboard
+  LogOut, Plus, MessageSquare, BookOpen, AlertCircle, RefreshCw, Settings
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { AVAILABLE_MODELS, DEFAULT_MODEL_ID } from '@/lib/model-config'
@@ -27,10 +27,8 @@ import type { AuthUser } from '@/lib/auth'
 
 const allNav = [
   { title: 'Assistant Juridique', url: '/chat', icon: Scale, roles: ['super_admin', 'responsable_agence', 'conseiller'] },
-  { title: 'Simulateur Rentabilité', url: '/simulateur', icon: Calculator, roles: ['super_admin', 'responsable_agence', 'conseiller'] },
   { title: 'Base de connaissances', url: '/admin/seed', icon: BookOpen, roles: ['super_admin'] },
   { title: 'Analytics', url: '/analytics', icon: BarChart2, roles: ['super_admin', 'responsable_agence'] },
-  { title: 'Dashboard de satisfaction', url: '/admin/dashboard', icon: LayoutDashboard, roles: ['super_admin'] },
   { title: 'Agences', url: '/admin/agencies', icon: Building2, roles: ['super_admin'] },
   { title: 'Utilisateurs', url: '/admin/users', icon: Users, roles: ['super_admin'] },
 ]

@@ -71,7 +71,6 @@ export function ChatUI({ conversationId }: { conversationId?: string }) {
   const [conversationLoading, setConversationLoading] = useState<Record<string, boolean>>({})
 
   const [input, setInput] = useState('')
-  const [feedbacks, setFeedbacks] = useState<Record<string, 1 | -1>>({})
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const [activeConvId, setActiveConvId] = useState<string | null>(null)
@@ -371,21 +370,6 @@ export function ChatUI({ conversationId }: { conversationId?: string }) {
     }
   }
 
-  async function handleFeedback(id: string, value: 1 | -1) {
-    setFeedbacks(prev => ({ ...prev, [id]: value }))
-    const msgIndex = messages.findIndex(m => m.id === id)
-    const assistantMsg = messages[msgIndex]
-    const precedingUserMsg = messages.slice(0, msgIndex).reverse().find(m => m.role === 'user')
-    if (!assistantMsg || !precedingUserMsg) return
-    try {
-      await fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: precedingUserMsg.content, response: assistantMsg.content, feedback: value, sessionId: activeConvId ?? undefined }),
-      })
-    } catch { /* non bloquant */ }
-  }
-
   const showSuggestions = messages.length === 0 && !isLoading
   const placeholderText = isListening
     ? 'Écoute...'
@@ -491,20 +475,6 @@ export function ChatUI({ conversationId }: { conversationId?: string }) {
                           {msg.content}
                         </ReactMarkdown>
                         {msg.isStreaming && <span className="inline-block w-0.5 h-[1em] bg-primary ml-0.5 align-middle animate-pulse" />}
-                      </div>
-                    )}
-                    {!msg.isStreaming && msg.content && (
-                      <div className="flex items-center gap-2 mt-3">
-                        <span className="text-[10px] text-white/70">Utile ?</span>
-                        {([1, -1] as const).map(v => (
-                          <button
-                            key={v}
-                            onClick={() => handleFeedback(msg.id, v)}
-                            className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${feedbacks[msg.id] === v ? 'border-white bg-white/20 text-white' : 'border-white/30 text-white/70 hover:border-white/60 hover:text-white'}`}
-                          >
-                            {v === 1 ? '👍' : '👎'}
-                          </button>
-                        ))}
                       </div>
                     )}
                     {!msg.isStreaming && letterSuggestions[msg.id]?.needed === true && (
