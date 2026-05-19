@@ -131,38 +131,52 @@ export async function POST(req: NextRequest) {
   let trimmedMessage = (body.message ?? '').trim().slice(0, MAX_MESSAGE_LENGTH)
 
   // ── Étape 0 : Traitement du document attaché (PDF) ──
+  // Sécurité : on utilise le client utilisateur (RLS) + double-check user_id explicite
+  // pour empêcher la lecture d'un document appartenant à un autre user via documentPath forgé.
+  // Token cap : ~80k chars ≈ 20k tokens — au-delà on tronque pour éviter explosion coût/context.
+  const MAX_DOC_CHARS = 80_000
   if (documentPath) {
     try {
-      console.info(`[pipeline] Récupération du texte pré-analysé pour : ${documentPath}`)
-      const adminClient = createAdminClient()
-      const { data: docData, error: docError } = await adminClient
+      const userClient = createClient()
+      const { data: { user: docOwner }, error: authErr } = await userClient.auth.getUser()
+      if (authErr || !docOwner) {
+        throw new Error('Utilisateur non authentifié pour l\'accès au document.')
+      }
+
+      console.info(`[pipeline] Récupération texte pour ${documentPath} (user=${docOwner.id})`)
+      const { data: docData, error: docError } = await userClient
         .from('document_contents')
-        .select('content')
+        .select('content, extraction_method')
         .eq('file_path', documentPath)
+        .eq('user_id', docOwner.id) // ceinture+bretelles : RLS le fait déjà
         .single()
 
       if (docError || !docData?.content) {
-        throw new Error(docError?.message || "Texte non trouvé en base de données.")
+        throw new Error(docError?.message || 'Document introuvable ou accès refusé.')
       }
-      
-      const extractedText = docData.content
 
-      // Injection structurée dans le message
-      trimmedMessage = `L'utilisateur a joint un document. Voici son contenu intégral pour ton analyse : 
+      const rawText = docData.content
+      const wasTruncated = rawText.length > MAX_DOC_CHARS
+      const extractedText = wasTruncated
+        ? rawText.slice(0, MAX_DOC_CHARS) + '\n\n[…DOCUMENT TRONQUÉ — suite non incluse…]'
+        : rawText
+
+      const truncationNote = wasTruncated
+        ? `\nNOTE : le document fait ${rawText.length} caractères, tronqué à ${MAX_DOC_CHARS} pour respecter la limite de contexte. Si l'utilisateur demande des informations sur la partie non incluse, demande-lui de préciser une section.\n`
+        : ''
+
+      trimmedMessage = `L'utilisateur a joint un document (extrait via ${docData.extraction_method ?? 'inconnu'}). Voici son contenu pour analyse :${truncationNote}
 
 <DOCUMENT_ATTACHÉ>
 ${extractedText}
 </DOCUMENT_ATTACHÉ>
 
 Question de l'utilisateur : ${trimmedMessage}`
-      
-      console.info(`[pipeline] Texte récupéré avec succès depuis la DB (${extractedText.length} chars)`)
+
+      console.info(`[pipeline] Texte injecté (${extractedText.length}/${rawText.length} chars, méthode=${docData.extraction_method}, tronqué=${wasTruncated})`)
     } catch (err: any) {
-      console.error(`[pipeline] Erreur extraction document ${documentPath}:`, err.message)
-      // On prévient l'IA de l'échec de lecture pour qu'elle puisse informer l'utilisateur
-      trimmedMessage = `L'utilisateur a joint un document (${documentPath}), mais je n'ai pas pu lire son contenu. 
-Erreur technique : ${err.message}
-Veuillez informer l'utilisateur que vous n'avez pas accès au contenu du document.
+      console.error(`[pipeline] Erreur lecture document ${documentPath}:`, err.message)
+      trimmedMessage = `L'utilisateur a joint un document mais je n'ai pas pu en lire le contenu (raison technique : ${err.message}). Informe l'utilisateur que le document n'est pas accessible et propose-lui de le re-uploader ou de poser sa question sans pièce jointe.
 
 Question de l'utilisateur : ${trimmedMessage}`
     }

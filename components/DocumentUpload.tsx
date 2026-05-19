@@ -38,10 +38,17 @@ export function DocumentUpload({ onUploadSuccess, disabled, className }: Documen
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Limite de taille (ex: 10Mo)
+    // Limite de taille (10Mo)
     const MAX_SIZE = 10 * 1024 * 1024
     if (file.size > MAX_SIZE) {
       setError('Le fichier est trop volumineux (max 10 Mo)')
+      return
+    }
+
+    // Type fichier : PDF uniquement (le pipeline backend ne gère que les PDF)
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    if (!isPdf) {
+      setError('Seuls les fichiers PDF sont acceptés pour le moment.')
       return
     }
 
@@ -107,7 +114,7 @@ export function DocumentUpload({ onUploadSuccess, disabled, className }: Documen
         ref={fileInputRef}
         onChange={handleFileChange}
         className="hidden"
-        accept=".pdf,.doc,.docx,.txt"
+        accept="application/pdf,.pdf"
         disabled={disabled || isUploading}
       />
 
