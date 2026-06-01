@@ -37,7 +37,15 @@ if (!SUPABASE_URL || !SERVICE_ROLE) {
 const TEST_EMAIL = 'testeur@start-academy.fr'
 const TEST_PASSWORD = 'Testeur123!'
 const TEST_FULL_NAME = 'Testeur Démo'
-const TEST_ROLE = 'conseiller' as const
+
+const VALID_ROLES = ['super_admin', 'responsable_agence', 'conseiller'] as const
+type Role = (typeof VALID_ROLES)[number]
+const ENV_ROLE = process.env.TEST_USER_ROLE?.trim() as Role | undefined
+if (ENV_ROLE && !VALID_ROLES.includes(ENV_ROLE)) {
+  console.error(`❌ TEST_USER_ROLE invalide : "${ENV_ROLE}". Valeurs : ${VALID_ROLES.join(', ')}`)
+  process.exit(1)
+}
+const TEST_ROLE: Role = ENV_ROLE ?? 'conseiller'
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
   auth: { autoRefreshToken: false, persistSession: false },
