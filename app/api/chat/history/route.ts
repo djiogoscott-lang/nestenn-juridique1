@@ -4,7 +4,12 @@ import { NextResponse } from 'next/server'
 
 /**
  * app/api/chat/history/route.ts
- * Récupère l'historique des conversations de l'utilisateur connecté.
+ * Liste les conversations visibles par l'utilisateur connecté.
+ *
+ * Périmètre par rôle :
+ *   - super_admin        → toutes les conversations de toutes les agences
+ *   - responsable_agence → toutes les conversations de son agence
+ *   - conseiller         → ses propres conversations uniquement
  */
 
 export async function GET() {
@@ -13,21 +18,47 @@ export async function GET() {
     if ('error' in authResult) return authResult.error
 
     const supabase = createClient()
-    
-    // Récupération des conversations triées par date de création
-    const { data, error } = await supabase
+    const { user } = authResult
+
+    // Pour super_admin / responsable_agence, on joint users + agencies pour
+    // afficher l'auteur et l'agence dans l'historique. Pour les conseillers,
+    // on garde le payload léger d'origine.
+    const isPrivileged = user.role === 'super_admin' || user.role === 'responsable_agence'
+
+    let query = supabase
       .from('conversations')
-      .select('id, title, created_at')
-      .eq('user_id', authResult.user.id)
+      .select(
+        isPrivileged
+          ? 'id, title, created_at, user_id, agency_id, users(full_name), agencies(name)'
+          : 'id, title, created_at'
+      )
       .order('created_at', { ascending: false })
-      .limit(30)
+      .limit(100)
+
+    if (user.role === 'conseiller') {
+      query = query.eq('user_id', user.id)
+    } else if (user.role === 'responsable_agence') {
+      query = query.eq('agency_id', user.agency_id)
+    }
+    // super_admin → aucun filtre, la RLS conversations_super_admin_all autorise tout
+
+    const { data, error } = await query
 
     if (error) {
       console.error('[History API] Error:', error.message)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    // Normalise le payload pour le front
+    const items = (data ?? []).map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      created_at: row.created_at,
+      author_name: row.users?.full_name ?? null,
+      agency_name: row.agencies?.name ?? null,
+    }))
+
+    return NextResponse.json(items)
   } catch (error: any) {
     console.error('[History API] Exception:', error.message)
     return NextResponse.json(

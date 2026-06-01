@@ -16,6 +16,8 @@ interface ConversationItem {
   id: string
   title: string
   created_at: string
+  author_name?: string | null
+  agency_name?: string | null
 }
 
 type LoadState = 'loading' | 'success' | 'error'
@@ -92,7 +94,11 @@ export default function HistoryPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return items
-    return items.filter(c => (c.title ?? '').toLowerCase().includes(q))
+    return items.filter(c =>
+      (c.title ?? '').toLowerCase().includes(q) ||
+      (c.author_name ?? '').toLowerCase().includes(q) ||
+      (c.agency_name ?? '').toLowerCase().includes(q)
+    )
   }, [items, query])
 
   return (
@@ -200,8 +206,19 @@ export default function HistoryPage() {
                     <h3 className="text-sm font-semibold text-foreground truncate group-hover:text-nestenn-cyan transition-colors">
                       {conv.title || 'Conversation sans titre'}
                     </h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {formatRelativeDate(conv.created_at)}
+                    <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+                      <span>{formatRelativeDate(conv.created_at)}</span>
+                      {(conv.author_name || conv.agency_name) && (
+                        <>
+                          <span className="text-muted-foreground/40">•</span>
+                          {conv.author_name && <span>{conv.author_name}</span>}
+                          {conv.agency_name && (
+                            <span className="px-1.5 py-0.5 bg-nestenn-cyan/10 text-nestenn-cyan rounded text-[10px] font-medium">
+                              {conv.agency_name}
+                            </span>
+                          )}
+                        </>
+                      )}
                     </p>
                   </div>
                   <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-nestenn-cyan group-hover:translate-x-0.5 transition-all shrink-0" />

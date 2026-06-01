@@ -18,10 +18,12 @@ export async function GET(
     const supabase = createClient()
     const { id } = params
 
-    // Vérification que la conversation appartient bien à l'utilisateur
+    // Vérification d'accès — un super_admin lit tout, un responsable
+    // d'agence lit les conversations de son agence, un conseiller lit
+    // uniquement les siennes.
     const { data: conv, error: convError } = await supabase
       .from('conversations')
-      .select('user_id')
+      .select('user_id, agency_id')
       .eq('id', id)
       .single()
 
@@ -29,7 +31,13 @@ export async function GET(
       return NextResponse.json({ error: 'Conversation non trouvée.' }, { status: 404 })
     }
 
-    if (conv.user_id !== authResult.user.id) {
+    const { user } = authResult
+    const canRead =
+      user.role === 'super_admin' ||
+      (user.role === 'responsable_agence' && conv.agency_id === user.agency_id) ||
+      conv.user_id === user.id
+
+    if (!canRead) {
       return NextResponse.json({ error: 'Non autorisé.' }, { status: 403 })
     }
 
